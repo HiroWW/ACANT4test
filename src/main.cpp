@@ -29,8 +29,8 @@ void setup () {
     ACAN_T4_Settings settings (125 * 1000) ; // 125 kbit/s
     // settings.mLoopBackMode = true ;
     // settings.mSelfReceptionMode = true ;
-    settings.mReceiveBufferSize = 4;
-    settings.mTransmitBufferSize = 64;
+    // settings.mReceiveBufferSize = 4;
+    // settings.mTransmitBufferSize = 64;
     const uint32_t errorCode = ACAN_T4::can1.begin (settings) ;
     const uint32_t errorCode2 = ACAN_T4::can2.begin(settings) ;
     Serial.print ("Bitrate prescaler: ") ;
@@ -71,55 +71,48 @@ void setup () {
 
 //-----------------------------------------------------------------
 
-static uint32_t gBlinkDate = 0 ;
-static uint32_t gSendDate = 0 ;
-static uint32_t gSentCount = 0 ;
-static uint32_t gReceivedCount = 0 ;
-bool programEnd = false;
-
 uint64_t cnt = 0;
 //-----------------------------------------------------------------
-
-void loop () {
-    if (gBlinkDate <= millis ()) {
-        gBlinkDate += 500 ;
-        digitalWrite (LED_BUILTIN, !digitalRead (LED_BUILTIN)) ;
-    }
-    CANMessage message ;
-    if (! programEnd){
-        // if (gSendDate <= millis ()) {
-        //     while(true){
-        //         message.id = 0x542 ;
-        //         message.data64 = cnt;
-        //         const bool ok = ACAN_T4::can1.tryToSend (message) ;
-        //         if (ok) {
-        //             Serial.print ("Sent: ") ;
-        //             Serial.println (cnt) ;
-        //         }
-        //         if (cnt == 63){
-        //             Serial.println("SEND END");
-        //             break;
-        //         }
-        //         cnt++ ;
-        //     }
-        // }
-        Serial.println("READ START");
-        while(true){
-            if (ACAN_T4::can2.receive (message)) {
-                gReceivedCount += 1 ;
-                Serial.print ("Received: ") ;
-                int tmp = message.data64;
-                Serial.println (tmp) ;
-                Serial.print("count is ");
-                Serial.println(gReceivedCount);
-
-            }
-            if (gReceivedCount == 63){
-                Serial.println("READ END");
-                programEnd = true;
-                break;
-            }
-        }
-    }
-
+void handle_mymessage(const CANMessage & inMessage){
+    Serial.println(inMessage.data64);
 }
+void loop () {
+    // if (gBlinkDate <= millis ()) {
+    //     gBlinkDate += 500 ;
+    //     digitalWrite (LED_BUILTIN, !digitalRead (LED_BUILTIN)) ;
+    // }
+    CANMessage message ;
+
+    // //* --------------SEND-----------------
+    // // while(true){
+    message.id = cnt ;
+    message.len = 8;
+    message.data[0] = cnt;
+    message.data[1] = cnt + 1;
+    message.data[3] = 123;
+    const bool ok = ACAN_T4::can1.tryToSend (message) ;
+    if (ok) {
+        Serial.print ("Sent: ") ;
+        Serial.println (message.data64) ;
+    }
+    if (cnt == 63){
+        cnt =0;
+        Serial.println("reset !!");
+    }
+    cnt++ ;
+    delay(500);
+    // //* -------RECEIVE-------
+    if (ACAN_T4::can2.receive (message)) {
+        // gReceivedCount += 1 ;
+        Serial.print("ID :");
+        Serial.println(message.id);
+        Serial.print ("Received Data : ") ;
+        // int tmp = message.data[];
+        // Serial.println (message.data64) ;
+        handle_mymessage(message);
+        Serial.println(message.rtr);
+        // Serial.print("count is ");
+        // Serial.println(gReceivedCount);
+    }
+}
+
